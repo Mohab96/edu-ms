@@ -10,7 +10,7 @@ class BaseUser(models.Model):
 
 
 class Student(BaseUser):
-    courses = models.ManyToManyField('Course')
+    courses = models.ManyToManyField('Course', related_name='students')
     wishlist = models.ManyToManyField('Course')
 
 
@@ -71,7 +71,7 @@ class Cart(models.Model):
 
 class CourseContent(models.Model):
     course = models.OneToOneField(
-        Course, related_name='content')
+        Course, on_delete=models.CASCADE, related_name='content')
 
 
 class Section(models.Model):
@@ -97,5 +97,5 @@ class Question(models.Model):
 
 class Answer(models.Model):
     question = models.OneToOneField(
-        Question, related_name='answer')
+        Question, on_delete=models.CASCADE, related_name='answer')
     body = models.CharField(max_length=250)
