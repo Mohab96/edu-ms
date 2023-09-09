@@ -17,22 +17,22 @@ class Student(BaseUser):
 class Course(models.Model):
     name = models.CharField(max_length=250)
     description = models.TextField()
-    reviews_count = models.IntegerField()
-    students_count = models.IntegerField()
     created_by = models.ForeignKey(
         'Instructor', on_delete=models.CASCADE, related_name='courses')
     last_update = models.DateField(auto_now=True)
     requirements = models.TextField(null=True, blank=True)
     objectives = models.TextField(null=True, blank=True)
     price = models.IntegerField()
-    category = models.ForeignKey(
-        'Category', on_delete=models.SET_NULL, related_name='courses')
+    category = models.ForeignKey('Category', on_delete=models.SET_NULL,
+                                 related_name='courses', null=True, blank=True)
     welcome_message = models.CharField(max_length=250)
 
 
 class Category(models.Model):
     name = models.CharField(max_length=250)
-    courses_count = models.IntegerField()
+
+    def __str__(self):
+        return self.name
 
 
 class Review(models.Model):
@@ -42,20 +42,20 @@ class Review(models.Model):
     course = models.ForeignKey(
         Course, on_delete=models.CASCADE, related_name='reviews')
 
-    student = models.ForeignKey(
-        Student, on_delete=models.SET_NULL, related_name='reviews')
+    student = models.ForeignKey(Student, on_delete=models.SET_NULL,
+                                related_name='reviews', null=True, blank=True)
 
     rating = models.DecimalField(max_digits=2, decimal_places=2)
     body = models.TextField()
 
 
 class Instructor(BaseUser):
-    courses_count = models.IntegerField()
     rating = models.DecimalField(max_digits=2, decimal_places=2)
-    reviews_count = models.IntegerField()
     students = models.ManyToManyField(Student)
-    students_count = models.IntegerField()
     bio = models.TextField(null=True, blank=True)
+
+    def __str__(self):
+        return self.first_name + ' ' + self.last_name
 
 
 class Cart(models.Model):
@@ -85,8 +85,8 @@ class MaterialItem(models.Model):
 
 
 class Question(models.Model):
-    student = models.ForeignKey(
-        Student, on_delete=models.SET_NULL, related_name='questions')
+    student = models.ForeignKey(Student, on_delete=models.SET_NULL,
+                                related_name='questions', null=True, blank=True)
 
     body = models.CharField(max_length=250)
     answered = models.BooleanField(default=False)
