@@ -20,13 +20,13 @@ class Course(models.Model):
     reviews_count = models.IntegerField()
     students_count = models.IntegerField()
     created_by = models.ForeignKey(
-        'Instructor', on_delete=models.PROTECT, related_name='courses')
+        'Instructor', on_delete=models.CASCADE, related_name='courses')
     last_update = models.DateField(auto_now=True)
     requirements = models.TextField(null=True, blank=True)
     objectives = models.TextField(null=True, blank=True)
     price = models.IntegerField()
     category = models.ForeignKey(
-        'Category', on_delete=models.PROTECT, related_name='courses')
+        'Category', on_delete=models.SET_NULL, related_name='courses')
     welcome_message = models.CharField(max_length=250)
 
 
@@ -37,16 +37,13 @@ class Category(models.Model):
 
 class Review(models.Model):
     instructor = models.ForeignKey(
-        'Instructor', on_delete=models.PROTECT, related_name='reviews')
+        'Instructor', on_delete=models.CASCADE, related_name='reviews')
 
     course = models.ForeignKey(
         Course, on_delete=models.CASCADE, related_name='reviews')
 
     student = models.ForeignKey(
-        Student, on_delete=models.PROTECT, related_name='reviews')
-
-    # TODO: how to make PROTECT while the at least
-    # one of the three fields is still there?
+        Student, on_delete=models.SET_NULL, related_name='reviews')
 
     rating = models.DecimalField(max_digits=2, decimal_places=2)
     body = models.TextField()
@@ -89,7 +86,7 @@ class MaterialItem(models.Model):
 
 class Question(models.Model):
     student = models.ForeignKey(
-        Student, on_delete=models.CASCADE, related_name='questions')
+        Student, on_delete=models.SET_NULL, related_name='questions')
 
     body = models.CharField(max_length=250)
     answered = models.BooleanField(default=False)
