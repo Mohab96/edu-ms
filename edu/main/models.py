@@ -1,15 +1,10 @@
 from django.db import models
 from uuid import uuid4
+from django.conf import settings
 
 
-class BaseUser(models.Model):
-    first_name = models.CharField(max_length=250)
-    last_name = models.CharField(max_length=250)
-    email = models.EmailField()
-    password = models.CharField(max_length=250)
-
-
-class Student(BaseUser):
+class Student(models.Model):
+    user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
     courses = models.ManyToManyField('Course', related_name='students')
     wishlist = models.ManyToManyField('Course')
 
@@ -49,13 +44,13 @@ class Review(models.Model):
     body = models.TextField()
 
 
-class Instructor(BaseUser):
-    rating = models.DecimalField(max_digits=2, decimal_places=2)
-    students = models.ManyToManyField(Student)
+class Instructor(models.Model):
+    user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    rating = models.DecimalField(max_digits=3, decimal_places=1)
     bio = models.TextField(null=True, blank=True)
 
     def __str__(self):
-        return self.first_name + ' ' + self.last_name
+        return f'{self.user.first_name} {self.user.last_name}'
 
 
 class Cart(models.Model):
