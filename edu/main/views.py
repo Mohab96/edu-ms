@@ -1,21 +1,12 @@
 # from rest_framework.response import Response
 # from rest_framework.decorators import api_view
 from rest_framework.viewsets import ModelViewSet
-from rest_framework.permissions import AllowAny
-# from .permissions import IsAdminOrOwner
 from .serializers import *
 from .models import *
 
 
 class CourseViewSet(ModelViewSet):
     queryset = Course.objects.all()
-
-    # def get_permissions(self):
-    #     if self.request.method in ['PUT', 'PATCH', 'DELETE']:
-    #         # must be an admin or created this course
-    #         return [IsAdminOrOwner()]
-    #     else:
-    #         return [AllowAny()]
 
     def get_serializer_class(self):
         if self.request.method in ['PATCH', 'PUT']:
@@ -35,3 +26,10 @@ class ReviewViewSet(ModelViewSet):
 
     def get_serializer_context(self):
         return {'course_id': self.kwargs['course_pk']}
+
+
+class EnrollmentViewSet(ModelViewSet):
+    serializer_class = EnrollmentUserPrespectiveSerializer
+
+    def get_queryset(self):
+        return Enrollment.objects.filter(course__id=self.kwargs['course_pk'])
