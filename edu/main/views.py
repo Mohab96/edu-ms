@@ -5,7 +5,7 @@ from .serializers import *
 from .models import *
 
 
-class CourseViewSet(ModelViewSet):
+class GeneralCourseViewSet(ModelViewSet):
     queryset = Course.objects.all()
 
     def get_serializer_class(self):
@@ -15,21 +15,47 @@ class CourseViewSet(ModelViewSet):
             return CourseSerializer
 
 
-class ReviewViewSet(ModelViewSet):
+class GeneralEnrollmentViewSet(ModelViewSet):
+    queryset = Enrollment.objects.all()
+    serializer_class = GeneralEnrollmentSerializer
+
+
+class GeneralReviewViewSet(ModelViewSet):
     queryset = Review.objects.all()
+    serializer_class = GeneralReviewSerializer
+
+
+class CoursesReviewViewSet(ModelViewSet):
+    def get_queryset(self):
+        return Review.objects.filter(course__id=self.kwargs['course_pk'])
 
     def get_serializer_class(self):
         if self.request.method in ['PATCH', 'PUT']:
-            return ReviewUpdateSerializer
+            return ReviewUpdateCoursePrespectiveSerializer
         else:
-            return ReviewSerializer
+            return ReviewCoursePrespectiveSerializer
 
     def get_serializer_context(self):
         return {'course_id': self.kwargs['course_pk']}
 
 
-class EnrollmentViewSet(ModelViewSet):
-    serializer_class = EnrollmentUserPrespectiveSerializer
+class CoursesEnrollmentViewSet(ModelViewSet):
+    serializer_class = EnrollmentCoursePrespectiveSerializer
 
     def get_queryset(self):
         return Enrollment.objects.filter(course__id=self.kwargs['course_pk'])
+
+
+class GeneralCategoryViewSet(ModelViewSet):
+    queryset = Category.objects.all()
+    serializer_class = GeneralCategorySerializer
+
+
+class UserViewSet(ModelViewSet):
+    queryset = User.objects.all()
+
+    def get_serializer_class(self):
+        if self.request.method == 'POST':
+            return CreateMainUserSerializer
+        else:
+            return GeneralMainUserSerializer

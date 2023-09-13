@@ -4,13 +4,13 @@ from django.conf import settings
 
 
 class User(models.Model):
-    user = models.OneToOneField(
+    core_user = models.OneToOneField(
         settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
-    rating = models.DecimalField(max_digits=3, decimal_places=1)
+    rating = models.DecimalField(max_digits=3, decimal_places=1, default=0)
     bio = models.TextField(null=True, blank=True)
 
     def __str__(self):
-        return f'{self.user.username}'
+        return f'{self.core_user.username}'
 
 
 class Course(models.Model):
