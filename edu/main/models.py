@@ -1,13 +1,15 @@
 from django.db import models
 from uuid import uuid4
 from django.conf import settings
+from django.core.validators import FileExtensionValidator
+# from django.core.files.base import ContentFile
 
 
 class User(models.Model):
     core_user = models.OneToOneField(
         settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
     rating = models.DecimalField(max_digits=3, decimal_places=1, default=0)
-    bio = models.TextField(null=True, blank=True)
+    bio = models.TextField(default='No Bio')
 
     def __str__(self):
         return f'{self.core_user.username}'
@@ -48,13 +50,14 @@ class Review(models.Model):
 
 class Cart(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid4)
-    student = models.ForeignKey(
+    student = models.OneToOneField(
         User, on_delete=models.CASCADE, related_name='cart')
-    total_price = models.IntegerField()
+    total_price = models.IntegerField(default=0)
 
 
 class CartItem(models.Model):
-    cart = models.ForeignKey(Cart, on_delete=models.CASCADE)
+    cart = models.ForeignKey(
+        Cart, on_delete=models.CASCADE, related_name='items')
     course = models.ForeignKey(Course, on_delete=models.CASCADE)
 
 
@@ -63,17 +66,13 @@ class CourseContent(models.Model):
         Course, on_delete=models.CASCADE, related_name='content')
 
 
-class Section(models.Model):
-    course_content = models.ForeignKey(
-        CourseContent, on_delete=models.CASCADE, related_name='sections')
-
-
 class MaterialItem(models.Model):
-    section = models.ForeignKey(
-        Section, on_delete=models.CASCADE, related_name='items')
+    course_content = models.ForeignKey(
+        CourseContent, on_delete=models.CASCADE, related_name='items')
     name = models.CharField(max_length=250)
-
-    # file TODO
+    file = models.FileField(upload_to='main', 
+                            validators=[FileExtensionValidator(['pdf', 'mp4'])], 
+                            blank=True, null=True)
 
 
 class Question(models.Model):
