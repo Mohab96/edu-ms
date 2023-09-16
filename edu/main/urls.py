@@ -12,15 +12,24 @@ router.register('carts', views.CartViewSet)
 
 courses_router = routers.NestedDefaultRouter(
     router, 'courses', lookup='course')
-carts_router = routers.NestedDefaultRouter(router, 'carts', lookup='cart')
-
 courses_router.register('reviews', views.CoursesReviewViewSet,
                         basename='course-reviews')
 courses_router.register('enrollments', views.CoursesEnrollmentViewSet,
                         basename='course-enrollments')
 courses_router.register('items', views.CourseItemsViewSet,
                         basename='course-items')
+
+
+carts_router = routers.NestedDefaultRouter(router, 'carts', lookup='cart')
 carts_router.register('items', views.CartItemViewSet, basename='cart-items')
 
+users_router = routers.NestedDefaultRouter(router, 'users', lookup='user')
+users_router.register('questions', views.QuestionViewSet,
+                      basename='user-questions')
+
+
 # URLConf
-urlpatterns = router.urls + courses_router.urls + carts_router.urls
+urlpatterns = router.urls + \
+    courses_router.urls + \
+    carts_router.urls + \
+    users_router.urls

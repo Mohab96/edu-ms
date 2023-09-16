@@ -10,33 +10,40 @@ class MaterialItemSerializer(serializers.ModelSerializer):
     file = serializers.FileField()
 
     def create(self, validated_data):
-        content_id = self.context['content_id']
-        return MaterialItem.objects.create(course_content_id=content_id, **validated_data)
+        course_id = self.context['course_id']
+        instance = MaterialItem.objects.create(
+            course_id=course_id,
+            **validated_data
+        )
+
+        return instance
+
+    def update(self, instance, validated_data):
+        with transaction.atomic():
+            instance.name = validated_data.get('name', instance.name)
+            instance.file = validated_data.get('file', instance.file)
+
+        instance.save()
+        return instance
 
     class Meta:
         model = MaterialItem
-        fields = ['file']
-
-
-class CourseContentSerializer(serializers.ModelSerializer):
-    id = serializers.IntegerField(read_only=True)
-    course_id = serializers.IntegerField(read_only=True)
-    items = MaterialItemSerializer(many=True, read_only=True)
-
-    class Meta:
-        model = CourseContent
-        fields = ['id', 'course_id', 'items']
+        fields = ['id', 'name', 'file']
 
 
 class CourseSerializer(serializers.ModelSerializer):
     id = serializers.IntegerField(read_only=True)
-    content = CourseContentSerializer(many=True, read_only=True)
+    items = MaterialItemSerializer(many=True, read_only=True)
+
+    def create(self, validated_data):
+        instance = Course.objects.create(**validated_data)
+        return instance
 
     class Meta:
         model = Course
         fields = ['id', 'name', 'description', 'created_by', 'last_update',
                   'requirements', 'objectives', 'price', 'category',
-                  'welcome_message', 'content']
+                  'welcome_message', 'items']
 
 
 class CourseUpdateSerializer(serializers.ModelSerializer):
@@ -78,7 +85,7 @@ class CartItemSerializer(serializers.ModelSerializer):
     student_id = serializers.SerializerMethodField(read_only=True)
 
     def get_student_id(self, cart_item):
-        return self.context['student_id']
+        return Cart.objects.filter(id=self.context['cart_id'])[0].student_id
 
     class Meta:
         model = CartItem
@@ -87,21 +94,14 @@ class CartItemSerializer(serializers.ModelSerializer):
 
 class CreateCartItemSerializer(serializers.ModelSerializer):
     id = serializers.IntegerField(read_only=True)
-    cart_id = serializers.SerializerMethodField(read_only=True)
-
-    def get_cart_id(self, cart):
-        return self.context['cart_id']
 
     def create(self, validated_data):
-        condition = CartItem.objects \
-            .filter(cart_id=validated_data['cart_id']) \
-            .filter(course_id=validated_data['course_id']) \
-            .exists()
+        instance = CartItem.objects.get(cart_id=validated_data['cart_id'],
+                                        course_id=validated_data['course_id'])
 
-        if condition:
-            return Response(status=status.HTTP_204_NO_CONTENT)
-
-        with transaction.atomic():
+        try:
+            return instance
+        except CartItem.DoesNotExist:
             instance = CartItem.objects.create(**validated_data)
             instance.save()
 
@@ -109,19 +109,12 @@ class CreateCartItemSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = CartItem
-        fields = ['id', 'cart_id', 'course_id']
+        fields = ['id', 'course_id']
 
 
 class UpdateCartItemSerializer(serializers.ModelSerializer):
-    id = serializers.IntegerField(read_only=True)
-    cart_id = serializers.SerializerMethodField(read_only=True)
-
-    def get_cart_id(self, cart):
-        return self.context['cart_id']
-
     def update(self, instance, validated_data):
-        print(instance.__dict__, dict(validated_data))
-
+        print(instance.__dict__, validated_data)
         current_course_id = instance.course_id
         new_course_id = validated_data.get('course_id', instance.course_id)
 
@@ -136,23 +129,6 @@ class UpdateCartItemSerializer(serializers.ModelSerializer):
                     CartItem.objects \
                         .filter(id=instance.id) \
                         .update(course_id=new_course_id)
-
-                    old_price = Course.objects \
-                        .filter(id=current_course_id)[0].price
-
-                    new_price = Course.objects \
-                        .filter(id=new_course_id)[0].price
-
-                    current_cart_price = Cart.objects \
-                        .filter(id=instance.cart_id)[0].total_price
-
-                    current_cart_price -= old_price
-                    current_cart_price += new_price
-
-                    Course.objects \
-                        .filter() \
-                        .update(total_price=current_cart_price)
-
                     instance.save()
             else:
                 CartItem.objects.filter(id=instance.id).delete()
@@ -162,15 +138,16 @@ class UpdateCartItemSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = CartItem
-        fields = ['id', 'cart_id', 'course_id']
+        fields = ['id', 'course_id']
+        read_only_fields = ('id', )
 
 
 class CartSerializer(serializers.ModelSerializer):
-    items = CartItemSerializer(many=True, read_only=True)
+    total_price = serializers.SerializerMethodField(read_only=True)
 
     class Meta:
         model = Cart
-        fields = ['id', 'student_id', 'items']
+        fields = ['id', 'student_id', 'total_price']
 
 
 class GeneralCoreUserSerializer(serializers.ModelSerializer):
@@ -284,3 +261,54 @@ class GeneralCategorySerializer(serializers.ModelSerializer):
     class Meta:
         model = Category
         fields = ['id', 'name', 'courses_count']
+
+
+class AnswerSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Answer
+        fields = ['id', 'question_id', 'body']
+        read_only_fields = ('id', 'question_id',)
+
+
+class GeneralQuestionSerializer(serializers.ModelSerializer):
+    answer = AnswerSerializer()
+
+    class Meta:
+        model = Question
+        fields = ['id', 'user_id', 'body', 'answer']
+        read_only_fields = ('id', 'user_id', 'answer',)
+
+
+class AskQuestionSerializer(serializers.ModelSerializer):
+    def create(self, validated_data):
+        instance = Question.objects.create(
+            user_id=self.context['user_id'],
+            course_id=validated_data['course'].id,
+            body=validated_data['body'])
+
+        instance.save()
+        return instance
+
+    class Meta:
+        model = Question
+        fields = ['id', 'body', 'course']
+        read_only_fields = ('id',)
+
+
+class AnswerQuestionSerializer(serializers.ModelSerializer):
+    answer = AnswerSerializer()
+
+    def update(self, instance, validated_data):
+        body = validated_data['answer']['body']
+        question_id = instance.id
+
+        ans_instance = Answer.objects.create(
+            question_id=question_id, body=body)
+
+        ans_instance.save()
+        return instance
+
+    class Meta:
+        model = Question
+        fields = ['id', 'user_id', 'body', 'answer']
+        read_only_fields = ('id', 'user_id', 'body',)

@@ -17,15 +17,18 @@ class GeneralCourseViewSet(ModelViewSet):
         else:
             return CourseSerializer
 
+
 class CourseItemsViewSet(ModelViewSet):
-    serializer_class = CourseContentSerializer
+    serializer_class = MaterialItemSerializer
 
     def get_queryset(self):
-        content_id = CourseContent.objects.get(course_id=self.kwargs['course_pk']).id
-        return MaterialItem.objects.filter(course_content__id=content_id)
+        return MaterialItem.objects.filter(course_id=self.kwargs['course_pk'])
 
     def get_serializer_context(self):
-        return {'content_id': CourseContent.objects.get(course_id=self.kwargs['course_pk']).id}
+        return {
+            'course_id': self.kwargs['course_pk']
+        }
+
 
 class GeneralEnrollmentViewSet(ModelViewSet):
     queryset = Enrollment.objects.all()
@@ -103,8 +106,28 @@ class CartItemViewSet(ModelViewSet):
             return CartItemSerializer
 
     def get_serializer_context(self):
-        stud_id = Cart.objects.filter(id=self.kwargs['cart_pk'])[0].student_id
         return {
-            'cart_id': self.kwargs['cart_pk'],
-            'student_id': stud_id
+            'cart_id': self.kwargs['cart_pk']
+        }
+
+
+class QuestionViewSet(ModelViewSet):
+    http_method_names = ['get', 'post', 'put']
+
+    def get_queryset(self):
+        courses = Course.objects.filter(
+            created_by=self.kwargs['user_pk']).values('id')
+        return Question.objects.filter(course_id__in=courses)
+
+    def get_serializer_class(self):
+        if self.request.method == 'GET':
+            return GeneralQuestionSerializer
+        elif self.request.method == 'POST':
+            return AskQuestionSerializer
+        else:
+            return AnswerQuestionSerializer
+
+    def get_serializer_context(self):
+        return {
+            'user_id': self.kwargs['user_pk']
         }
