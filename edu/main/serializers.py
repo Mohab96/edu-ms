@@ -2,8 +2,9 @@ from rest_framework import serializers
 from .models import *
 from core.models import CoreUser
 from django.db import transaction
-from rest_framework.response import Response
-from rest_framework import status
+# from rest_framework.response import Response
+# from rest_framework import status
+# from django.shortcuts import get_object_or_404
 
 
 class MaterialItemSerializer(serializers.ModelSerializer):
@@ -93,23 +94,23 @@ class CartItemSerializer(serializers.ModelSerializer):
 
 
 class CreateCartItemSerializer(serializers.ModelSerializer):
-    id = serializers.IntegerField(read_only=True)
-
     def create(self, validated_data):
-        instance = CartItem.objects.get(cart_id=validated_data['cart_id'],
-                                        course_id=validated_data['course_id'])
+        print(validated_data)
+        course_id = validated_data['course_id']
+        condition = CartItem.objects.filter(cart_id=self.context['cart_id']) \
+                                       .filter(course_id=course_id).exists()
 
-        try:
-            return instance
-        except CartItem.DoesNotExist:
-            instance = CartItem.objects.create(**validated_data)
-            instance.save()
+        if condition:
+            return CartItem.objects.get(cart_id=self.context['cart_id'],
+                                    course_id=course_id)
 
-        return instance
+        return CartItem.objects.create(cart_id=self.context['cart_id'],
+                                    course_id=course_id)
 
     class Meta:
         model = CartItem
-        fields = ['id', 'course_id']
+        fields = ['id', 'course_id', 'cart_id']
+        read_only_fields = ('id', 'cart_id',)
 
 
 class UpdateCartItemSerializer(serializers.ModelSerializer):
@@ -129,12 +130,11 @@ class UpdateCartItemSerializer(serializers.ModelSerializer):
                     CartItem.objects \
                         .filter(id=instance.id) \
                         .update(course_id=new_course_id)
-                    instance.save()
             else:
                 CartItem.objects.filter(id=instance.id).delete()
-                return Response(status=status.HTTP_204_NO_CONTENT)
 
-        return instance
+        return CartItem.objects.filter(cart_id=instance.cart_id) \
+            .filter(course_id=current_course_id)
 
     class Meta:
         model = CartItem
@@ -143,11 +143,9 @@ class UpdateCartItemSerializer(serializers.ModelSerializer):
 
 
 class CartSerializer(serializers.ModelSerializer):
-    total_price = serializers.SerializerMethodField(read_only=True)
-
     class Meta:
         model = Cart
-        fields = ['id', 'student_id', 'total_price']
+        fields = ['id', 'student_id']
 
 
 class GeneralCoreUserSerializer(serializers.ModelSerializer):
@@ -166,9 +164,6 @@ class GeneralMainUserSerializer(serializers.ModelSerializer):
     rating = serializers.DecimalField(
         read_only=True, max_digits=3, decimal_places=1)
     core_user = GeneralCoreUserSerializer()
-
-    # created_by = CourseSerializer(many=True, read_only=True)
-    # enrolled_in = CourseSerializer(many=True, read_only=True)
 
     def update(self, instance, validated_data):
         with transaction.atomic():
@@ -190,7 +185,6 @@ class GeneralMainUserSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
         fields = ['id', 'core_user', 'rating', 'bio']
-        # 'created_by' , 'enrolled_in'
 
 
 class CreateCoreUserSerializer(serializers.ModelSerializer):
